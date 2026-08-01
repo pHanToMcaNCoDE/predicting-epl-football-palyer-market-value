@@ -1,8 +1,53 @@
-import pandas as pd
 import re
+import time
 import requests
+import unicodedata
+import numpy as np
+import pandas as pd
 from bs4 import BeautifulSoup
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+
+#######################################################################################################################################
+# Global variable(s)
+#######################################################################################################################################
+
+# The last 3 digits of my Student ID (R00277181).
+
+random_for_all = 181
+
+# Random Forest
+
+rf_param_grid = {
+    "model__n_estimators": [200, 500, 800],
+    "model__max_depth": [None, 10, 20],
+    "model__min_samples_split": [2, 5],
+    "model__min_samples_leaf": [1, 2]
+}
+
+# Light GBM
+
+lgbm_param_grid = {
+    "model__n_estimators": [200, 500, 800],
+    "model__learning_rate": [0.01, 0.05, 0.1],
+    "model__num_leaves": [15, 31, 63]
+}
+
+# XGBoost
+
+xgb_param_grid = {
+    "model__n_estimators": [200, 500, 800],
+    "model__learning_rate": [0.01, 0.05, 0.1],
+    "model__max_depth": [3, 5, 7]
+}
 
 #######################################################################################################################################
 # Raw data
@@ -113,7 +158,7 @@ def convert_market_value(value):
 # Clean transfermarket data for every squad/clubs
 
 def clean_transfermarkt_squad(df, club, season):
-    """Clean and transform a Transfermarkt squad table.
+    """ Clean and transform a Transfermarkt squad table.
 
         This function processes a raw Transfermarkt squad DataFrame by:
             - Removing rows with missing market values.
@@ -177,7 +222,7 @@ def clean_transfermarkt_squad(df, club, season):
 # get clubs for each league
 
 def get_league_clubs(league_url):
-    """Extract club names and club IDs from a transfermarkt league page.
+    """Extract club names and club IDs from a Transfermarkt league page.
 
     Parameters:
         league_url : str
@@ -239,50 +284,59 @@ def get_league_clubs(league_url):
 
 
 
-# collect all squads for multiple seasons
+# Collect all squads for multiple seasons
+
+
 
 def collect_league_squads(clubs_df, season):
-    """
-    Collect and clean squad data for all clubs
+    """ Collect and clean squad data for all clubs
     in a league.
 
-    Parameters
-    ----------
-    clubs_df : pd.DataFrame
-        Output from get_league_clubs().
-    season : str
-        Season identifier.
+    Parameters: 
+        clubs_df (pd.DataFrame): Output from get_league_clubs().
+        season (str): Season identifier.
 
-    Returns
-    -------
-    pd.DataFrame
-        Combined squad data for all clubs.
+    Returns:
+        pd.DataFrame: Combined squad data for all clubs.
     """
 
     all_squads = []
 
     for _, row in clubs_df.iterrows():
 
-        try:
-            tables = pd.read_html(row["squad_url"])
+        print("Processing:", row["club_name"])
 
-            squad_df = clean_transfermarkt_squad(
-                tables[1],
-                row["club_name"],
-                season
-            )
+        for attempt in range(3):
 
-            all_squads.append(squad_df)
+            try:
+                tables = pd.read_html(row["squad_url"])
 
-            print(f"✓ {row['club_name']}")
+                squad_df = clean_transfermarkt_squad(
+                    tables[1],
+                    row["club_name"],
+                    season
+                )
 
-        #except Exception as e:
+                all_squads.append(squad_df)
 
-            #print(
-             #   f"✗ {row['club_name']} : {e}"
-            #)
-        except Exception as e:
-            print(f"✗ {club_name}: {e}")
+                print(f"✓ {row['club_name']}")
+
+                time.sleep(2)
+                break
+
+            except Exception as e:
+
+                print(
+                    f"Attempt {attempt + 1} failed for "
+                    f"{row['club_name']}: {e}"
+                )
+
+                time.sleep(5)
+
+                if attempt == 2:
+                    print(f"Skipping {row['club_name']}")
+
+    print("Number of squad dataframes:", len(all_squads))
 
     return pd.concat(
         all_squads,
@@ -293,7 +347,7 @@ def collect_league_squads(clubs_df, season):
 # Function to remove symbols or alpha-numeric characters in player names
 
 def clean_player_name(name):
-    """Standardise player names for merging datasets.
+    """ Standardise player names for merging datasets.
 
         Parameters:
             name : str
@@ -330,7 +384,7 @@ def clean_player_name(name):
 
 
 
-#
+# Merge the data sources
 
 def merge_fbref_transfermarkt(fbref_df, transfermarkt_df):
     """Merge FBref performance data with transfermarkt market values.
@@ -394,3 +448,236 @@ def fix_bundesliga_league(df):
     ] = "GER-Bundesliga"
 
     return df
+
+#################################################################################################################################
+# TRAINING PIPELINE FUNCTION
+#################################################################################################################################
+
+# Random Forest
+
+def run_random_forest(X_train, X_test, y_train, y_test, model_name):
+    """
+        Train, tune and evaluate a Random Forest model using GridSearchCV with 5-fold cross-validation.
+    """
+
+    # Build Random Forest pipeline
+    random_forest_pipeline = Pipeline([
+        ("model", RandomForestRegressor(
+            n_estimators = 500,
+            random_state=random_for_all,
+            n_jobs=-1
+        ))
+    ])
+
+    # Hyperparameter tuning using 5-fold cross-validation
+
+    rf_grid_search = GridSearchCV(
+        estimator=random_forest_pipeline,
+        param_grid=rf_param_grid,
+        cv=5,
+        scoring="neg_mean_absolute_error",
+        n_jobs=-1,
+        verbose=1
+    )
+
+    # Fit GridSearchCV to find the best Random Forest model
+    rf_grid_search.fit(X_train, y_train)
+    
+
+
+    # prediction using test data
+    y_pred_rf = rf_grid_search.predict(
+        X_test
+    )
+
+
+    # Model Evaluation
+    
+    mae_rf = mean_absolute_error(y_test, y_pred_rf)
+    rmse_rf = np.sqrt(mean_squared_error(y_test, y_pred_rf))
+    r2_rf = r2_score(y_test, y_pred_rf)
+
+    print(f"{model_name} Random Forest completed.")
+    
+    return {
+        "Algorithm": "Random Forest",
+        "Dataset": model_name,
+        "MAE": mae_rf,
+        "RMSE": rmse_rf,
+        "R2": r2_rf,
+        "Best Parameters": rf_grid_search.best_params_,
+        "Best Estimator": rf_grid_search.best_estimator_
+        #"Predictions": y_pred_rf
+    }
+
+
+    
+
+
+# Linear Regression
+
+def run_linear_regression(X_train, X_test, y_train, y_test, model_name):
+    """ 
+        Train and evaluate a Linear Regression model using an 80/20 train-test split.
+    """
+
+    # Build Linear Regression pipeline
+    linear_regression_pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", LinearRegression())
+    ])
+
+    # Fit model
+    linear_regression_pipeline.fit(
+        X_train,
+        y_train
+    )
+
+    # Make predictions
+    y_pred_lr = linear_regression_pipeline.predict(
+        X_test
+    )
+
+    # Model evaluation
+    mae_lr = mean_absolute_error(y_test, y_pred_lr)
+
+    rmse_lr = np.sqrt(
+        mean_squared_error(y_test, y_pred_lr)
+    )
+
+    r2_lr = r2_score(y_test, y_pred_lr)
+
+    print(f"{model_name} Linear Regression completed.")
+
+    return {
+        "Algorithm": "Linear Regression",
+        "Dataset": model_name,
+        "MAE": mae_lr,
+        "RMSE": rmse_lr,
+        "R2": r2_lr
+        #"Predictions": y_pred_lr
+    }    
+
+
+    
+
+    
+# Light Gradient Boosting Model
+
+def run_light_gbm(X_train, X_test, y_train, y_test, model_name):
+    """
+        Train, tune and evaluate a LightGBM model using an 80/20 train-test split.
+    """
+
+    # Build LightGBM pipeline
+    lgbm_pipeline = Pipeline([
+        ("model", LGBMRegressor(
+            n_estimators=500,
+            random_state=random_for_all,
+            n_jobs=-1,
+            verbosity=-1
+        ))
+    ])
+
+    # Hyperparameter tuning using 5-fold cross-validation
+    lgbm_grid_search = GridSearchCV(
+        estimator=lgbm_pipeline,
+        param_grid=lgbm_param_grid,
+        cv=5,
+        scoring="neg_mean_absolute_error",
+        n_jobs=-1,
+        verbose=1
+    )
+
+    # Fit GridSearchCV to find the best LightGBM
+    lgbm_grid_search.fit(X_train, y_train)
+    
+
+    # Make predictions on the test set
+    y_pred_lgbm = lgbm_grid_search.predict(
+        X_test
+    )
+
+    # Model Evaluation
+    
+    mae_lgbm = mean_absolute_error(y_test, y_pred_lgbm)
+    rmse_lgbm = np.sqrt(mean_squared_error(y_test, y_pred_lgbm))
+    r2_lgbm = r2_score(y_test, y_pred_lgbm)
+    
+    print(f"{model_name} LightGBM completed.") 
+    
+    return {
+        "Algorithm": "LightGBM",
+        "Dataset": model_name,
+        "MAE": mae_lgbm,
+        "RMSE": rmse_lgbm,
+        "R2": r2_lgbm,
+        "Best Parameters": lgbm_grid_search.best_params_,
+        "Best Estimator": lgbm_grid_search.best_estimator_
+        #"Predictions": y_pred_lgbm
+    }
+
+
+
+
+
+# XGBoost
+
+
+def run_xgboost(X_train, X_test, y_train, y_test, model_name):
+    """
+        Train, tune and evaluate an XGBoost model using GridSearchCV with 5-fold cross-validation.
+    """
+
+    
+    # Build XGBoost pipeline
+    xgb_pipeline = Pipeline([
+        ("model", XGBRegressor(
+            n_estimators=500,
+            random_state=random_for_all,
+            n_jobs=-1
+        ))
+    ])
+
+    # Hyperparameter tuning using 5-fold cross-validation
+
+    xgb_grid_search = GridSearchCV(
+        estimator=xgb_pipeline,
+        param_grid=xgb_param_grid,
+        cv=5,
+        scoring="neg_mean_absolute_error",
+        n_jobs=-1,
+        verbose=1
+    )
+
+    # Fit GridSearchCV to find the best XGBoost model
+    xgb_grid_search.fit(X_train, y_train)
+    
+
+
+    # prediction using test data
+    y_pred_xgb = xgb_grid_search.predict(
+        X_test
+    )
+
+
+    # Model Evaluation
+    
+    mae_xgb = mean_absolute_error(y_test, y_pred_xgb)
+    rmse_xgb = np.sqrt(mean_squared_error(y_test, y_pred_xgb))
+    r2_xgb = r2_score(y_test, y_pred_xgb)
+
+    print(f"{model_name} XGBoost completed.")
+    
+    return {
+        "Algorithm": "XGBoost",
+        "Dataset": model_name,
+        "MAE": mae_xgb,
+        "RMSE": rmse_xgb,
+        "R2": r2_xgb,
+        "Best Parameters": xgb_grid_search.best_params_,
+        "Best Estimator": xgb_grid_search.best_estimator_
+        #"Predictions": y_pred_xgb
+    }
+
+    
