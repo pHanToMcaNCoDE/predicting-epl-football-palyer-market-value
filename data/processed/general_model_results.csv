@@ -4,24 +4,26 @@ Linear Regression,Attackers,0.6659275310597293,0.9072540565708213,0.493158348906
 Linear Regression,Midfielders,0.7870831449423936,1.062303671972167,0.4367824395773583,,
 Linear Regression,Defenders,0.7376260492916424,1.3786477497312957,-0.5129720917981786,,
 Linear Regression,Goalkeepers,0.6537221459003046,0.8003359960327343,0.685429010294875,,
-Random Forest,Global,0.5340031103933155,0.749175869969753,0.6943700531588917,"{'model__max_depth': None, 'model__min_samples_leaf': 2, 'model__min_samples_split': 5, 'model__n_estimators': 800}","Pipeline(steps=[('model',
+Random Forest,Global,0.5340031103933154,0.749175869969753,0.6943700531588917,"{'model__max_depth': None, 'model__min_samples_leaf': 2, 'model__min_samples_split': 5, 'model__n_estimators': 800}","Pipeline(steps=[('model',
                  RandomForestRegressor(min_samples_leaf=2, min_samples_split=5,
                                        n_estimators=800, n_jobs=-1,
                                        random_state=181))])"
-Random Forest,Attackers,0.5693900456862501,0.7357346632500011,0.6666834368503716,"{'model__max_depth': None, 'model__min_samples_leaf': 2, 'model__min_samples_split': 2, 'model__n_estimators': 200}","Pipeline(steps=[('model',
-                 RandomForestRegressor(min_samples_leaf=2, n_estimators=200,
-                                       n_jobs=-1, random_state=181))])"
-Random Forest,Midfielders,0.6085114490861401,0.8057201486656111,0.6759983139870536,"{'model__max_depth': 10, 'model__min_samples_leaf': 2, 'model__min_samples_split': 5, 'model__n_estimators': 200}","Pipeline(steps=[('model',
+Random Forest,Attackers,0.5693900456862501,0.7357346632500011,0.6666834368503716,"{'model__max_depth': 20, 'model__min_samples_leaf': 2, 'model__min_samples_split': 2, 'model__n_estimators': 200}","Pipeline(steps=[('model',
+                 RandomForestRegressor(max_depth=20, min_samples_leaf=2,
+                                       n_estimators=200, n_jobs=-1,
+                                       random_state=181))])"
+Random Forest,Midfielders,0.6085114490861403,0.8057201486656113,0.6759983139870536,"{'model__max_depth': 10, 'model__min_samples_leaf': 2, 'model__min_samples_split': 5, 'model__n_estimators': 200}","Pipeline(steps=[('model',
                  RandomForestRegressor(max_depth=10, min_samples_leaf=2,
                                        min_samples_split=5, n_estimators=200,
                                        n_jobs=-1, random_state=181))])"
-Random Forest,Defenders,0.5419742390594932,0.7640320410379808,0.5353270107997771,"{'model__max_depth': 20, 'model__min_samples_leaf': 2, 'model__min_samples_split': 2, 'model__n_estimators': 800}","Pipeline(steps=[('model',
+Random Forest,Defenders,0.5419742390594932,0.7640320410379807,0.5353270107997772,"{'model__max_depth': 20, 'model__min_samples_leaf': 2, 'model__min_samples_split': 2, 'model__n_estimators': 800}","Pipeline(steps=[('model',
                  RandomForestRegressor(max_depth=20, min_samples_leaf=2,
                                        n_estimators=800, n_jobs=-1,
                                        random_state=181))])"
-Random Forest,Goalkeepers,0.7194166106516665,0.9114326108543922,0.5920348220819058,"{'model__max_depth': None, 'model__min_samples_leaf': 2, 'model__min_samples_split': 2, 'model__n_estimators': 500}","Pipeline(steps=[('model',
-                 RandomForestRegressor(min_samples_leaf=2, n_estimators=500,
-                                       n_jobs=-1, random_state=181))])"
+Random Forest,Goalkeepers,0.7194166106516665,0.9114326108543922,0.5920348220819058,"{'model__max_depth': 20, 'model__min_samples_leaf': 2, 'model__min_samples_split': 2, 'model__n_estimators': 500}","Pipeline(steps=[('model',
+                 RandomForestRegressor(max_depth=20, min_samples_leaf=2,
+                                       n_estimators=500, n_jobs=-1,
+                                       random_state=181))])"
 LightGBM,Global,0.5321882029322398,0.7424639203052356,0.6998218667123881,"{'model__learning_rate': 0.01, 'model__n_estimators': 800, 'model__num_leaves': 15}","Pipeline(steps=[('model',
                  LGBMRegressor(learning_rate=0.01, n_estimators=800, n_jobs=-1,
                                num_leaves=15, random_state=181,
